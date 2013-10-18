@@ -14,7 +14,11 @@ class SensorSpec extends TestKit(ActorSystem("SensorSpec")) with ImplicitSender
       val sensor = system.actorOf(Props(classOf[Sensor], PerfectModel,
           new StationaryWorld(testTheta)))
       sensor ! Sensor.Subscribe(testActor)
-      expectMsg(Sensor.SensorReading(testTheta, 0.0))
+      expectMsgPF() {
+        case Sensor.SensorReading(t, theta, sigTheta) ⇒
+          theta should equal (testTheta)
+          sigTheta should equal (0.0)
+      }
     }
   }
 }

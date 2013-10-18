@@ -9,17 +9,18 @@ trait SensorModel {
 }
 
 case object PerfectModel extends SensorModel {
-  def measure(state: SystemState) = Sensor.SensorReading(state.theta, 0.0)
+  def measure(state: SystemState) = Sensor.SensorReading(state.t, state.theta,
+      0.0)
 }
 
 case class GaussianModel(sig: Double) extends SensorModel {
-  def measure(state: SystemState) = Sensor.SensorReading(state.theta +
+  def measure(state: SystemState) = Sensor.SensorReading(state.t, state.theta +
       sig*util.Random.nextGaussian(), 0.0)
 }
 
 object Sensor {
   case object Sense
-  case class SensorReading(theta: Double, sigTheta: Double)
+  case class SensorReading(t: Double, theta: Double, sigTheta: Double)
   case class Subscribe(subscriber: ActorRef)
   case class Unsubscribe(subscriber: ActorRef)
 }
