@@ -21,33 +21,29 @@ case class BogackiShampineStep[Y <: OdeYState[Y, D],
 class BogackiShampineMethod[O <: Ode[Y, D], Y <: OdeYState[Y, D],
     D <: OdeDyDtState[D, Y]](ode: O)
     extends EmbeddedOdeStepper[BogackiShampineStep[Y, D], O, Y, D] {
-  def step(state: OdeState[Y, D], t: Double, measurer: ErrorMeasurer[Y, D]) = {
+  def embeddedStep(state: OdeState[Y, D], t: Double) = {
     val h = t - state.t
     val k1 = ode.rhs(state).scale(h)
-    val (nextSeg, z1) = fsalStep(state, k1, t)
-    (nextSeg, measurer.measureError(nextSeg.endState, z1))
+    fsalStep(state, k1, t)
   }
 
-  def step(lastStep: BogackiShampineStep[Y, D], t: Double,
-      measurer: ErrorMeasurer[Y, D]) = {
+  def embeddedStep(lastStep: BogackiShampineStep[Y, D], t: Double) = {
     val h = t - lastStep.endTime
-    val (nextSeg, z1) = fsalStep(lastStep.endState,
-        lastStep.k4.scale(h/lastStep.h), t)
-    (nextSeg, measurer.measureError(nextSeg.endState, z1))
+    fsalStep(lastStep.endState, lastStep.k4.scale(h/lastStep.h), t)
   }
 
   def step(state: OdeState[Y, D], t: Double) = {
     val h = t - state.t
     val k1 = ode.rhs(state).scale(h)
-    val (nextSeg, z1) = fsalStep(state, k1, t)
-    nextSeg
+    val (thisStep, z1) = fsalStep(state, k1, t)
+    thisStep
   }
 
   def step(lastStep: BogackiShampineStep[Y, D], t: Double) = {
     val h = t - lastStep.endTime
-    val (nextSeg, z1) = fsalStep(lastStep.endState,
+    val (thisStep, z1) = fsalStep(lastStep.endState,
         lastStep.k4.scale(h/lastStep.h), t)
-    nextSeg
+    thisStep
   }
 
   private def fsalStep(state: OdeState[Y, D], k1: Y, t: Double):
