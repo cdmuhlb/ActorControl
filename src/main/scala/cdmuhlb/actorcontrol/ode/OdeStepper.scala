@@ -3,6 +3,7 @@ package cdmuhlb.actorcontrol.ode
 trait OdeStep[Y <: OdeYState[Y, D], D <: OdeDyDtState[D, Y]] {
   def startTime: Double
   def endTime: Double
+  def endState: OdeState[Y, D]
   def interpolate(t: Double): OdeState[Y, D]
 
   def stepSize: Double = endTime - startTime
