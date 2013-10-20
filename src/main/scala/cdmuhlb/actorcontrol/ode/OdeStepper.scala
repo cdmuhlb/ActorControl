@@ -5,6 +5,7 @@ trait OdeStep[Y <: OdeYState[Y, D], D <: OdeDyDtState[D, Y]] {
   def endTime: Double
   def interpolate(t: Double): OdeState[Y, D]
 
+  def stepSize: Double = endTime - startTime
   def containsTime(t: Double): Boolean = (t >= startTime) && (t <= endTime)
 }
 
