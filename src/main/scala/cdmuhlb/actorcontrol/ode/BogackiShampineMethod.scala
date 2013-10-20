@@ -2,7 +2,7 @@ package cdmuhlb.actorcontrol.ode
 
 case class BogackiShampineStep[Y <: OdeYState[Y, D],
     D <: OdeDyDtState[D, Y]](startState: OdeState[Y, D], k1: Y,
-    endState: OdeState[Y, D], k4: Y) extends OdeStep[Y, D] {
+    endState: OdeState[Y, D], k4: Y, h: Double) extends OdeStep[Y, D] {
   val startTime = startState.t
   val endTime = endState.t
   def interpolate(t: Double) = {
@@ -30,7 +30,9 @@ class BogackiShampineMethod[O <: Ode[Y, D], Y <: OdeYState[Y, D],
 
   def step(lastStep: BogackiShampineStep[Y, D], t: Double,
       measurer: ErrorMeasurer[Y, D]) = {
-    val (nextSeg, z1) = fsalStep(lastStep.endState, lastStep.k4, t)
+    val h = t - lastStep.endTime
+    val (nextSeg, z1) = fsalStep(lastStep.endState,
+        lastStep.k4.scale(h/lastStep.h), t)
     (nextSeg, measurer.measureError(nextSeg.endState, z1))
   }
 
@@ -42,7 +44,9 @@ class BogackiShampineMethod[O <: Ode[Y, D], Y <: OdeYState[Y, D],
   }
 
   def step(lastStep: BogackiShampineStep[Y, D], t: Double) = {
-    val (nextSeg, z1) = fsalStep(lastStep.endState, lastStep.k4, t)
+    val h = t - lastStep.endTime
+    val (nextSeg, z1) = fsalStep(lastStep.endState,
+        lastStep.k4.scale(h/lastStep.h), t)
     nextSeg
   }
 
@@ -56,7 +60,7 @@ class BogackiShampineMethod[O <: Ode[Y, D], Y <: OdeYState[Y, D],
     val endState = OdeState[Y, D](t, state.y.add(k1.scale(2.0/9.0)).add(
         k2.scale(1.0/3.0)).add(k3.scale(4.0/9.0)))
     val k4 = ode.rhs(endState).scale(h)
-    val thisStep = BogackiShampineStep(state, k1, endState, k4)
+    val thisStep = BogackiShampineStep(state, k1, endState, k4, h)
     val z1 = OdeState[Y, D](t, state.y.add(k1.scale(7.0/24.0)).add(
         k2.scale(0.25)).add(k3.scale(1.0/3.0)).add(k4.scale(1.0/8.0)))
     (thisStep, z1)
