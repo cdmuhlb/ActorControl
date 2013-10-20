@@ -52,4 +52,21 @@ class OdeStepperSpec extends WordSpec with Matchers {
       step.endState.y.y should be (y1 +- 1.0e-15)
     }
   }
+
+  "A LinearRk4Method" should {
+    "compute linear solutions exactly" in {
+      val dydt = 2.0
+      val ode = new ConstantOde(dydt)
+      val stepper = new LinearRk4Method[ConstantOde, ScalarYState,
+          ScalarDyDtState](ode)
+      val t0 = 1.0
+      val y0 = 0.0
+      val state0 = OdeState[ScalarYState, ScalarDyDtState](t0, ScalarYState(y0))
+      val t1 = 3.0
+      val y1 = y0 + dydt*(t1 - t0)
+      val step = stepper.step(state0, t1)
+      step.endTime should equal (t1)
+      step.endState.y.y should be (y1 +- 1.0e-15)
+    }
+  }
 }
