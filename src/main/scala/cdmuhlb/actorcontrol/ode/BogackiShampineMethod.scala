@@ -21,6 +21,8 @@ case class BogackiShampineStep[Y <: OdeYState[Y, D],
 class BogackiShampineMethod[O <: Ode[Y, D], Y <: OdeYState[Y, D],
     D <: OdeDyDtState[D, Y]](ode: O)
     extends EmbeddedOdeStepper[BogackiShampineStep[Y, D], O, Y, D] {
+  val errorOrder = 3.0
+
   def embeddedStep(state: OdeState[Y, D], t: Double) = {
     val h = t - state.t
     val k1 = ode.rhs(state).scale(h)

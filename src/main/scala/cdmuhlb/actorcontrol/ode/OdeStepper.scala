@@ -19,6 +19,7 @@ trait OdeStepper[S <: OdeStep[Y, D], O <: Ode[Y, D],
 trait EmbeddedOdeStepper[S <: OdeStep[Y, D], O <: Ode[Y, D],
     Y <: OdeYState[Y, D], D <: OdeDyDtState[D, Y]]
     extends OdeStepper[S, O, Y, D] {
+  def errorOrder: Double
   def embeddedStep(state: OdeState[Y, D], t: Double): (S, OdeState[Y, D])
   def embeddedStep(lastStep: S, t: Double): (S, OdeState[Y, D])
 }
