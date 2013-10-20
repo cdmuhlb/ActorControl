@@ -106,4 +106,52 @@ class OdeIntegratorSpec extends WordSpec with Matchers {
       stepSolState.y.y should be (stateSolState.y.y +- 1.0e-15)
     }
   }
+
+  "An EmbeddedAdaptiveDtIntegrator" should {
+    "compute linear solutions exactly with the Bogacki-Shampine method" in {
+      val dydt = 3.0
+      val ode = new ConstantOde(dydt)
+      val stepper = new BogackiShampineMethod[ConstantOde, ScalarYState,
+          ScalarDyDtState](ode)
+      val t0 = 0.0
+      val y0 = 1.0
+      val state0 = OdeState[ScalarYState, ScalarDyDtState](t0, ScalarYState(y0))
+      val t1 = 5.0
+      val y1 = y0 + dydt*(t1 - t0)
+
+      val tol = 1.0e-6
+      val minDt = 1.0e-8
+      val measurer = new ScalarAbsRelErrorMeasurer(1.0)
+      val solver = new EmbeddedAdaptiveDtIntegrator(stepper, minDt, measurer,
+          tol)
+      val sol = solver.integrate(state0, t1)
+      val solState = sol.interpolate(t1)
+      solState.t should equal (t1)
+      solState.y.y should be (y1 +- 1.0e-15)
+    }
+    "compute correct solutions when starting from an OdeStep" in {
+      val dydt = 3.0
+      val ode = new ConstantOde(dydt)
+      val stepper = new BogackiShampineMethod[ConstantOde, ScalarYState,
+          ScalarDyDtState](ode)
+      val t0 = 0.0
+      val y0 = 1.0
+      val state0 = OdeState[ScalarYState, ScalarDyDtState](t0, ScalarYState(y0))
+      val t1 = 0.1
+      val step1 = stepper.step(state0, t1)
+      val t2 = 5.0
+
+      val tol = 1.0e-6
+      val minDt = 1.0e-8
+      val measurer = new ScalarAbsRelErrorMeasurer(1.0)
+      val solver = new EmbeddedAdaptiveDtIntegrator(stepper, minDt, measurer,
+          tol)
+      val stepSol = solver.integrate(step1, t2)
+      val stateSol = solver.integrate(step1.endState, t2)
+      val stepSolState = stepSol.interpolate(t2)
+      val stateSolState = stateSol.interpolate(t2)
+      stepSolState.t should equal (t2)
+      stepSolState.y.y should be (stateSolState.y.y +- 1.0e-15)
+    }
+  }
 }

@@ -93,3 +93,151 @@ class ConstantDtIntegrator[S <: OdeStep[Y, D], O <: Ode[Y, D],
     builder.toSolution
   }
 }
+
+trait TwoStateErrorMeasurer[Y <: OdeYState[Y, D], D <: OdeDyDtState[D, Y]] {
+  def measureError(y1: OdeState[Y, D], y2: OdeState[Y, D]): Double
+}
+
+class ScalarAbsRelErrorMeasurer(tolRatio: Double)
+    extends TwoStateErrorMeasurer[ScalarYState, ScalarDyDtState] {
+  require(tolRatio > 0.0)
+
+  def measureError(y1: OdeState[ScalarYState, ScalarDyDtState],
+      y2: OdeState[ScalarYState, ScalarDyDtState]) = {
+    val delta = math.abs(y2.y.y - y1.y.y)
+    val yabs = math.abs(y1.y.y).max(math.abs(y2.y.y))
+    delta / (1.0 + tolRatio*yabs)
+  }
+}
+
+class EmbeddedAdaptiveDtIntegrator[S <: OdeStep[Y, D], O <: Ode[Y, D],
+    Y <: OdeYState[Y, D], D <: OdeDyDtState[D, Y]](
+    stepper: EmbeddedOdeStepper[S, O, Y, D], minDt: Double,
+    measurer: TwoStateErrorMeasurer[Y, D], tol: Double)
+    extends OdeIntegrator[S, O, Y, D] {
+  // From Numerical Recipes, Third Edition, p. 915
+  private val beta = 0.4 / stepper.errorOrder
+  private val alpha = 1.0 / stepper.errorOrder - 0.75*beta
+  private val safetyFactor = 0.9
+  private val minScale = 0.2
+  private val maxScale = 10.0
+  private val minLastErr = 1.0e-4
+
+  def integrate(state: OdeState[Y, D], t: Double) = {
+    val initialDt = 100.0*minDt // arbitrary
+    val duration = t - state.t
+    val builder = new OdeSolutionBuilder[S, Y, D]
+
+    var dt = initialDt
+    var lastErr = minLastErr
+
+    // Take first step to initialize `lastStep`
+    var ti = if ((state.t + dt) < t) (state.t + dt) else t
+    dt = ti - state.t
+    var (step, yy) = stepper.embeddedStep(state, ti)
+    var err = measurer.measureError(step.endState, yy) / tol
+    var rejected = err > 1.0
+    while ((err > 1.0) && (dt > minDt)) {
+      dt = nextDt(dt, err, lastErr).min(dt*safetyFactor)
+      ti = state.t + dt
+      val sy = stepper.embeddedStep(state, ti)
+      step = sy._1
+      yy = sy._2
+      err = measurer.measureError(step.endState, yy) / tol
+    }
+    if (err > 1.0) { emitMinDtWarning(t, err) }
+    builder.appendStep(step)
+    var lastStep = step
+    var lastT = ti
+    dt = {
+      val proposedDt = nextDt(dt, err, lastErr)
+      if (rejected) proposedDt.min(dt)
+      else proposedDt
+    }
+    lastErr = err.max(minLastErr)
+
+    // Take remaining steps
+    while (lastT < t) {
+      ti = if ((lastT + dt) < t) (lastT + dt) else t
+      dt = ti - lastT
+      var sy = stepper.embeddedStep(lastStep, ti)
+      step = sy._1
+      yy = sy._2
+      err = measurer.measureError(step.endState, yy) / tol
+      rejected = err > 1.0
+      while ((err > 1.0) && (dt > minDt)) {
+        dt = nextDt(dt, err, lastErr).min(dt*safetyFactor)
+        ti = lastT + dt
+        sy = stepper.embeddedStep(lastStep, ti)
+        step = sy._1
+        yy = sy._2
+        err = measurer.measureError(step.endState, yy) / tol
+      }
+      if (err > 1.0) { emitMinDtWarning(t, err) }
+      builder.appendStep(step)
+      lastStep = step
+      lastT = ti
+      dt = {
+        val proposedDt = nextDt(dt, err, lastErr)
+        if (rejected) proposedDt.min(dt)
+        else proposedDt
+      }
+      lastErr = err.max(minLastErr)
+    }
+
+    builder.toSolution
+  }
+
+  def integrate(seedStep: S, t: Double) = {
+    val initialDt = safetyFactor*seedStep.stepSize
+    val builder = new OdeSolutionBuilder[S, Y, D]
+
+    var lastT = seedStep.endTime
+    var dt = initialDt
+    var lastErr = minLastErr
+    var lastStep = seedStep
+    while (lastT < t) {
+      var ti = if ((lastT + dt) < t) (lastT + dt) else t
+      dt = ti - lastT
+      var (step, yy) = stepper.embeddedStep(lastStep, ti)
+      var err = measurer.measureError(step.endState, yy) / tol
+      val rejected = err > 1.0
+      while ((err > 1.0) && (dt > minDt)) {
+        dt = nextDt(dt, err, lastErr).min(dt*safetyFactor)
+        ti = lastT + dt
+        val sy = stepper.embeddedStep(lastStep, ti)
+        step = sy._1
+        yy = sy._2
+        err = measurer.measureError(step.endState, yy) / tol
+      }
+      if (err > 1.0) { emitMinDtWarning(t, err) }
+      builder.appendStep(step)
+      lastStep = step
+      lastT = ti
+      dt = {
+        val proposedDt = nextDt(dt, err, lastErr)
+        if (rejected) proposedDt.min(dt)
+        else proposedDt
+      }
+      lastErr = err.max(minLastErr)
+    }
+    builder.toSolution
+  }
+
+  private def nextDt(dt: Double, err: Double, lastErr: Double): Double = {
+    val scaledDt = {
+      if (err == 0.0) dt*maxScale
+      else {
+        val piScale = safetyFactor*math.pow(err, -alpha)*math.pow(lastErr, beta)
+        dt*piScale.max(minScale).min(maxScale)
+      }
+    }
+    scaledDt.max(minDt)
+  }
+
+  private def emitMinDtWarning(t: Double, err: Double): Unit = {
+    // TODO: use logging framework
+    Console.err.println(s"[warn] ${getClass.getName}: Could not meet error tolerance without exceeding minDt")
+    Console.err.println(s"       t: $t, err: ${err*tol}, tol: $tol, minDt: $minDt")
+  }
+}
