@@ -50,4 +50,9 @@ class RodPendulumOde(mass: Double, length: Double, tau: Double)
       Double = mass*length*length*state.y.omega*state.y.omega/6.0
   def totalEnergy(state: OdeState[PendulumYState, PendulumDyDtState]): Double =
       potentialEnergy(state) + kineticEnergy(state)
+
+  def tipPos(state: OdeState[PendulumYState, PendulumDyDtState]):
+      (Double, Double) = {
+    (length*math.sin(state.y.theta), -length*math.cos(state.y.theta))
+  }
 }

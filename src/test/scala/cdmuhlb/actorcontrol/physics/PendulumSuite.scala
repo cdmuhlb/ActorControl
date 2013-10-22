@@ -5,6 +5,40 @@ import cdmuhlb.actorcontrol.ode._
 
 class PendulumSpec extends WordSpec with Matchers {
   "A RodPendulumOde" should {
+    "compute correct positions for horizontal alignments" in {
+      val length = 2.5
+      val ode = new RodPendulumOde(1.0, length, 0.0)
+      // Down
+      val state1 = OdeState[PendulumYState, PendulumDyDtState](0.0,
+          PendulumYState(0.5*math.Pi, 3.0))
+      val pos1 = ode.tipPos(state1)
+      pos1._1 should be (length +- 1.0e-15)
+      pos1._2 should be (0.0 +- 1.0e-15)
+
+      // Up
+      val state2 = OdeState[PendulumYState, PendulumDyDtState](2.0,
+          PendulumYState(-0.5*math.Pi, -3.0))
+      val pos2 = ode.tipPos(state2)
+      pos2._1 should be (-length +- 1.0e-15)
+      pos2._2 should be (0.0 +- 1.0e-15)
+    }
+    "compute correct positions for vertical alignments" in {
+      val length = 2.5
+      val ode = new RodPendulumOde(1.0, length, 0.0)
+      // Down
+      val state1 = OdeState[PendulumYState, PendulumDyDtState](0.0,
+          PendulumYState(0.0, 3.0))
+      val pos1 = ode.tipPos(state1)
+      pos1._1 should be (0.0 +- 1.0e-15)
+      pos1._2 should be (-length +- 1.0e-15)
+
+      // Up
+      val state2 = OdeState[PendulumYState, PendulumDyDtState](2.0,
+          PendulumYState(math.Pi, -3.0))
+      val pos2 = ode.tipPos(state2)
+      pos2._1 should be (0.0 +- 1.0e-15)
+      pos2._2 should be (length +- 1.0e-15)
+    }
     "have no kinetic energy when at rest" in {
       val state = OdeState[PendulumYState, PendulumDyDtState](0.0,
           PendulumYState(0.5, 0.0))
