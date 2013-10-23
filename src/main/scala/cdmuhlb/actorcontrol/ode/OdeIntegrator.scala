@@ -2,10 +2,14 @@ package cdmuhlb.actorcontrol.ode
 
 trait OdeSolution[S <: OdeStep[Y, D], Y <: OdeYState[Y, D],
     D <: OdeDyDtState[D, Y]] {
+  def startTime: Double
+  def endTime: Double
   def containsTime(t: Double): Boolean
   def interpolate(t: Double): OdeState[Y, D]
   def lastStep: S
   def nSteps: Int
+  def steps: Seq[S]
+  def append(sol: OdeSolution[S, Y, D]): OdeSolution[S, Y, D]
 }
 
 class OdeSolutionBuilder[S <: OdeStep[Y, D], Y <: OdeYState[Y, D],
@@ -18,8 +22,11 @@ class OdeSolutionBuilder[S <: OdeStep[Y, D], Y <: OdeYState[Y, D],
   }
   def toSolution: OdeSolution[S, Y, D] = new OdeSolutionImpl(steps)
 
-  private class OdeSolutionImpl(steps: Vector[S]) extends OdeSolution[S, Y, D] {
-    def containsTime(t: Double) = search(t).nonEmpty
+  private class OdeSolutionImpl(val steps: Vector[S])
+      extends OdeSolution[S, Y, D] {
+    def startTime = steps.head.startTime
+    def endTime = steps.last.endTime
+    def containsTime(t: Double) = (t >= startTime) && (t <= endTime)
     def interpolate(t: Double) = {
       val stepOpt = search(t)
       require(stepOpt.nonEmpty)
@@ -27,6 +34,10 @@ class OdeSolutionBuilder[S <: OdeStep[Y, D], Y <: OdeYState[Y, D],
     }
     def lastStep = steps.last
     def nSteps = steps.length
+    def append(sol: OdeSolution[S, Y, D]) = {
+      require(sol.startTime == endTime)
+      new OdeSolutionImpl(steps ++ sol.steps)
+    }
 
     private def search(t: Double): Option[S] = {
       def binarySearch(lo: Int, hi: Int): Option[S] = {
