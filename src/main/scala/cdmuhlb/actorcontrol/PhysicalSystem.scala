@@ -63,8 +63,8 @@ class DeterministicWorld(mass: Double, length: Double, state0: SystemState)
     assert(t > currentT)
     solOpt match {
       case None ⇒
-        val odeState = OdeState[PendulumYState, PendulumDyDtState](state0.t,
-            PendulumYState(state0.theta, state0.thetaDot))
+        val odeState = OdeState[PendulumYState, PendulumDyDtState](
+            1.0e-9*state0.t, PendulumYState(state0.theta, state0.thetaDot))
         solOpt = Some(solver.integrate(odeState, t))
       case Some(sol) ⇒
         val sol = solOpt.get
