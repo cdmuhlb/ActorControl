@@ -20,7 +20,7 @@ case class GaussianModel(sig: Double) extends SensorModel {
 
 object Sensor {
   case object Sense
-  case class SensorReading(t: Double, theta: Double, sigTheta: Double)
+  case class SensorReading(t: Long, theta: Double, sigTheta: Double)
   case class Subscribe(subscriber: ActorRef)
   case class Unsubscribe(subscriber: ActorRef)
 }
