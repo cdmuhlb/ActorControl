@@ -11,6 +11,6 @@ Third Edition_ and features adaptive timestepping and dense output.
 
 Dependencies
 ------------
-_ActorControl_ is written in Scala and requires an
-[SBT](http://www.scala-sbt.org/) launcher compatible with version 0.13.0 and a
-Java SE 7 JVM.
+_ActorControl_ is written in Scala.  Combilation requires an
+[SBT](http://www.scala-sbt.org/) launcher compatible with version 0.13.2 and a
+Java SE 7 JDK.  Execution only requires a Java SE 7 JVM.
