@@ -42,7 +42,7 @@ class OdeSolutionBuilder[S <: OdeStep[Y, D], Y <: OdeYState[Y, D],
     private def search(t: Double): Option[S] = {
       def binarySearch(lo: Int, hi: Int): Option[S] = {
         assert(lo <= hi)
-        val i = (hi + lo)/2
+        val i = (hi + lo) >>> 1
         val step = steps(i)
         if (step.containsTime(t)) Some(step)
         else if (lo == hi) None
